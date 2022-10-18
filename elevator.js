@@ -22,10 +22,6 @@ class App {
         this.elevator.alertReset = this.processWaitlist;
     }
 
-    addToWaitlist = (floor) => {
-        this.waitlist.push(floor);
-    }
-
     floorRequest = (direction, floor) => {
         if(this.elevator.queueDirection == Direction.Idle || direction == this.elevator.queueDirection){
             console.log(`🟡 Floor ${floor} requested to go ${direction}`);
@@ -36,9 +32,31 @@ class App {
     };
 
     elevatorRequest = (floor) => {
+        //console.log('this.elevator.queueDirection', this.elevator.queueDirection);
         console.log(`🟢 Elevator requested floor ${floor}`);
-        this.elevator.updateQueue(floor);
+        const relativeDirection = this.elevator.getTargetTravelDirection(floor);
+        /*
+            check the distance between the current floor and each requested floor
+
+            this.elevator.destinationFloor
+            this.elevator.currentFloor
+            
+            if(Math.abs(this.elevator.currentFloor-floor) > Math.abs(this.elevator.destinationFloor-floor))
+        */
+
+        if(Math.abs(this.elevator.currentFloor-floor) < Math.abs(this.elevator.destinationFloor-floor)){
+            this.elevator.queueDirection = this.elevator.getTargetTravelDirection(floor);
+            this.elevator.updateQueue(floor);
+        }else if(relativeDirection == this.elevator.queueDirection){
+            this.elevator.updateQueue(floor);
+        }else{
+            this.waitlist.push(floor);
+        }
     };
+
+    addToWaitlist = (floor) => {
+        this.waitlist.push(floor);
+    }
 
     processWaitlist = (elevatorFloorLocation) => {
         console.log('waitlist:', this.waitlist);
@@ -80,8 +98,11 @@ class Elevator {
         return floor > this.currentFloor ? Direction.Up : Direction.Down;
     }
 
-    travelToDestinationFloor = async () => {
+    #travelToDestinationFloor = async () => {
         await timeout(time);
+
+        //console.log('this.destinationFloor', this.destinationFloor);
+        //console.log('this.queue', this.queue);
 
         const i = this.currentTravelDirection == Direction.Up ? 1 : -1;
 
@@ -95,13 +116,13 @@ class Elevator {
                 if(this.queue.length > 0){
                     this.currentTravelDirection = this.queueDirection;
                     this.destinationFloor = this.queue[0];
-                    this.travelToDestinationFloor();
+                    this.#travelToDestinationFloor();
                 }else{
                     this.#reset();
                 }
             }else{
                 console.log(`🛗  Elevator is at floor ${this.currentFloor}`);
-                this.travelToDestinationFloor();
+                this.#travelToDestinationFloor();
             }
         }
     }
@@ -128,6 +149,7 @@ class Elevator {
     }
 
     updateQueue = (floor, direction = Direction.Idle) => {
+        //console.log('elevator status', this.status);
         if(this.#checkFloorBoundaries(floor)){
             if(this.queueDirection == Direction.Idle) this.queueDirection = direction;
             this.#addToQueue(floor);
@@ -137,7 +159,7 @@ class Elevator {
                 this.destinationFloor = floor;
                 this.status = ElevatorStatus.Moving;
 
-                this.travelToDestinationFloor();
+                this.#travelToDestinationFloor();
             }else if(this.status == ElevatorStatus.Moving){
                 this.destinationFloor = this.queue[0];
             }
@@ -157,18 +179,37 @@ class Elevator {
 const app = new App();
 
 const testElevator = (async () => {
-    app.floorRequest(Direction.Down, 3);
+    app.floorRequest(Direction.Up, 8);
 
     await timeout(time);
 
-    app.floorRequest(Direction.Down, 10);
+    app.floorRequest(Direction.Up, 3);
 
-    await timeout(time*9);
-
-    app.elevatorRequest(1);
-
-    await timeout(time*7);
+    await timeout(time);
 
     app.elevatorRequest(2);
+    app.elevatorRequest(5);
+
+    await timeout(time*6);
+
+    app.elevatorRequest(10);
+
+    // await timeout(time*7);
+
+    // app.elevatorRequest(2);
+
+    // app.floorRequest(Direction.Down, 3);
+
+    // await timeout(time);
+
+    // app.floorRequest(Direction.Down, 10);
+
+    // await timeout(time*9);
+
+    // app.elevatorRequest(1);
+
+    // await timeout(time*7);
+
+    // app.elevatorRequest(2);
     
 })();
